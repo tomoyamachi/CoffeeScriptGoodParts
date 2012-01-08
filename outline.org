@@ -1,0 +1,261 @@
+* 3章 オブジェクト
+変数型 以外はすべてオブジェクト
+
+変数型 ー一度セットした値を変更できないー 数値、文字列、真偽値、null, undefined
+オブジェクト ー キーによって整理され、変更可能
+
+** 値の宣言/取得/更新
+
+*** 宣言
+var stooge = {
+    "first_name" : "Jerome",
+    "last_name" : "Howard"
+};
+
+var flight = {
+    airline : "Oceanic",
+    number : 815,
+    departure : {
+        Place : "Japan",
+        city : "tokyo"
+    },
+    arrival : {
+        Place : "USA",
+        city : "Los Angels"
+    }
+};
+
+*** 取得
+> stooge.first_name
+'Jerome'
+
+> stooge["first_name"]
+'Jerome'
+
+> flight.airline
+'Oceanic'
+
+> flight.departure
+{ Place: 'Japan', city: 'tokyo' }
+
+> flight.departure.Place
+'Japan'
+
+
+*** 更新
+stooge.first_name = "Tomoya"
+'Tomoya'
+
+> stooge.first_name
+'Tomoya'
+
+** 参照渡し
+オブジェクトは参照渡し。コピーはない。
+var x = stooge;
+x.nickname = "Curly";
+var nick = stooge.nickname;
+
+> nick
+`Curly`
+
+** プロトタイプ
+すべてのオブジェクトはプロトタイプオブジェクトとリンクして、そこからプロパティを継承している。
+通常つくられたオブジェクトは、JavaScript標準のObject.prototypeオブジェクトとリンクしている。
+オブジェクトを新たに生成するとき、プロトタイプとするオブジェクトを選択できる。
+
+新しいオブジェクトを修正しても、プロトタイプとなったオブジェクトは影響を受けない。
+オブジェクトに指定されたプロパティの値が無い場合、そのプロトタイプオブジェクトからプロパティの値を取得しようとする。
+そこでもなければ、順にプロトタイプを溯り、Object.prototypeに辿り着くまで検索が行われる。
+
+
+*** 既存のオブジェクトをプロトタイプとして、新しいオブジェクトを生成するメソッド createメソッド
+if (typeof Object.create !== 'function'){
+    Object.create = function(o){
+        var F = function (){};
+        F.prototype = o;
+        return new F();
+    };
+}
+
+*** stoogeをプロトタイプとしたオブジェクトをつくる
+var another_stooge = Object.create(stooge);
+another_stooge.first_name = "Harry";
+another_stooge.last_name = "Potter";
+
+*** 結果
+> another_stooge.first_name
+'Harry'
+> another_stooge.last_name
+'Potter'
+> another_stooge.nickname
+'Curly'
+> typeof another_stooge.middle_name
+undefined
+
+** オブジェクトの中身を調べる
+
+*** typeof演算子
+> typeof flight.number
+'number'
+> typeof flight.arrival
+'object'
+> typeof flight.not_exist_type
+'undefined'
+
+ただし、継承チェーンに存在するプロパティに対しても利用できる
+> typeof flight.toString
+'function'
+
+*** hasOwnPropertyメソッド
+指定されたオブジェクトのプロパティにのみ適用される。
+
+>flight.hasOwnProperty("number")
+true
+> flight.hasOwnProperty("toString")
+false
+
+** for in文を利用したプロパティの列挙
+
+var name;
+for (name in another_stooge) {
+    if (typeof another_stooge.name !== 'function'){
+       document.writeln(name + " : " + another_stooge.name);
+    }
+}
+
+** プロパティの削除
+> another_stooge.nickname
+'Curly'
+> delete another_stooge.nickname;
+> another_stooge.nickname
+undefine
+
+** グローバル領域の利用を減らす
+Javascriptは、グローバル変数を簡単に定義できる。
+しかし、それは柔軟な設計を阻害するので、使わないほうがいい。
+
+*** 1つの方法は、アプリケーションのためにグローバル変数を1つだけ定義すること。
+var MYAPP = {
+
+};
+
+MYAPP.stooge = {
+    first_name : "Joe",
+    last_name : "Howard"
+};
+
+MYAPP.flight = {
+    airline : "Oceanic"
+    ///...
+};
+
+このようにグローバル変数を1つだけにすることで、他のライブラリと悪影響を受けることが少なくなる。
+
+
+* 4章 関数
+
+** 関数はオブジェクトである Functionオブジェクト
+javascriptの関数はオブジェクト。
+オブジェクトは、複数の名前と値のペアで構成されている。
+FunctionオブジェクトはFunction.prototypeにリンクされている。
+
+すべての関数は生成されるとき、さらに2つの隠されたプロパティを持つ。
+コンテキストとコードだ。
+
+関数と他のオブジェクトが違う点は、呼び出しができるということ。
+
+** 関数を定義する 関数リテラルの4パーツ
+var add = function (a,b) {
+    return a + b;
+};
+
+> add(1,2)
+4
+
+4つのパートで構成される。
+1.予約語 function
+2.関数の名前 (省略可能。名前をつけなかった場合、無名関数と呼ばれる。)
+3.パラメータ 括弧で囲まれている。複数の場合はコンマで区切る。
+4.命令文の集合 中括弧で囲まれている。関数の本体。呼び出されたとき実行される。
+
+** 関数の呼び出し 2つの隠されたプロパティ
+関数を呼び出すと、実行されている関数の処理は一旦停止され、コントロールとパラメータが新しい関数へ渡される。
+このとき、thisとargumentsも自動的に受けとっている。
+
+thisの値は、4つの呼び出しパターンによって異なる。
+
+*** メソッド呼び出しパターン
+関数がオブジェクトのプロパティとして格納されているとき、メソッドと呼ばれる。
+このとき、thisにはそのオブジェクトが格納される。
+
+var myObject = {
+    value: 0,
+    increment: function (inc){
+        this.value += (typeof inc === 'number') ? inc : 1;
+    }
+};
+
+myObject.increment();
+document.writeln(myObject.value);
+//1
+
+myObject.increment(3);
+document.writeln(myObject.value);
+//4
+
+*** 関数呼び出しパターン
+関数がオブジェクトのプロパティでない場合、関数として呼び出される。
+このとき、thisはクローバルオブジェクトがセットされる。
+
+内部関数のthisと、呼び出し元の関数のthisは同じものにすべき。
+これは言語設計として未熟。
+しかし、内部関数のthisと呼び出し元の関数のthisを同じものにするのは簡単。
+この問題の解決策は、メソッド内で別の変数を定義すること。
+
+
+myObject.double = function(){
+    var that = this;
+    var helper = function(){
+        that.value = that.value * 2;
+    };
+    helper();
+};
+myObject.double();
+document.writeln(myObject.value);
+// 8
+
+*** コンストラクタ呼び出しパターン newでつくられるオブジェクト
+JavaScriptはプロトタイプ継承を行う言語。
+つまりオブジェクトからオブジェクトへの継承。クラスの概念が存在しない。
+
+もし関数呼び出しのとき、new演算子が前に付けられていたら、新しいオブジェクトが生成され、
+thisにはその新しいオブジェクトがセットされる。
+
+new演算子を前提とした関数は、コンストラクタと呼ばれ、大文字で始まる変数名にする。
+
+var Quo = function (string) {
+    this.status = string;
+};
+
+Quo.prototype.get_status = function(){
+    return this.status;
+};
+
+var myQuo = new Quo("confused");
+document.writeln(myQuo.get_status());
+
+*** apply呼び出しパターン thisの指定ができる
+JavaScriptは関数型オブジェクト指向言語であり、関数はメソッドを持つことができる。
+applyメソッドを使うと、引数を格納した配列を合格って関数呼び出しができる。
+
+applyには2つのパラメータを指定でき、1つはthisにセットしたい値を、2つ目はパラメータの配列。
+
+var array = [3,4];
+var sum = add.apply(null,array);
+document.writeln(sum);  // 7
+
+var statusObject = {
+    status: "A-OK"
+};
+var status = Quo.prototype.get_status.apply(statusObject);
+document.writeln(status);  // A-OK
